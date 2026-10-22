@@ -39,33 +39,21 @@ ad-hoc 签名，首次打开如果被 Gatekeeper 拦截：**右键 → 打开**�
 ## 给 Agent 的接口（HTTP CLI）
 
 应用启动后监听 `http://127.0.0.1:8741/cli`（仅回环地址，仅本机进程可达；端口可在设置中修改）。
-协议遵循 [http-cli-for-agent v1.0.0](https://github.com/steven0lisa/http-cli-for-agent)：统一信封、渐进式 `?help=1`、`fields=` 投影、标准错误码、`version` 版本面。设置窗口的「Agent 接口」标签页内含完整说明与可复制命令。
+这是**唯一**的接口入口，遵循 [http-cli-for-agent v1.0.0](https://github.com/steven0lisa/http-cli-for-agent) 协议。接口完全自描述——把 Base URL 交给 Agent 即可，无需任何接口文档：
 
 ```bash
 BASE=http://127.0.0.1:8741/cli
-
-curl -s "$BASE?help=1"                    # 根帮助：列出全部顶层命令
-curl -s "$BASE/gestures?help=1"           # gestures 组下的子命令
-curl -s "$BASE/gestures/update?help=1&detail=1"   # update 参数 schema + 示例
-
-# 把 OK 手势绑定为「弹通知」并启用
-curl -s -X POST "$BASE/gestures/update" -H 'Content-Type: application/json' \
-  -d '{"id":"ok","enabled":true,"script_type":"applescript","script":"display notification \"OK 触发\" with title \"MacGestures\"","cooldown":3}'
-
-curl -s "$BASE/status"                    # 识别状态 / 相机帧计数 / 最近触发
-curl -s "$BASE/events?limit=5"            # 最近触发与测试记录（分页 + fields 投影）
-curl -s -X POST "$BASE/recognition/start" # 开启识别（未授权摄像头会触发系统弹窗）
-curl -s -X POST "$BASE/recognition/stop"  # 暂停识别（摄像头灯熄灭）
-curl -s -X POST "$BASE/recognition/test" -H 'Content-Type: application/json' -d '{"id":"ok"}'  # 手动跑一次脚本
-
-# 属主人脸门控
-curl -s "$BASE/owner/status"              # 录入/门控/阈值/实时距离
-curl -s -X POST "$BASE/owner/enroll" -H 'Content-Type: application/json' -d '{"gate_enabled":true}'  # 需正对摄像头
-
-curl -s "$BASE/version/current"           # 实现版本 + 协议版本
+curl -s "$BASE?help=1"     # 起点：根帮助列出全部顶层命令
 ```
 
-命令一览：`status`、`gestures/list|get|update`、`recognition/start|stop|test`、`events`、`owner/status|enroll|update|delete`、`version/current|releases`。
+之后由 Agent 逐步从接口自身发现一切：
+
+1. 对帮助里列出的命令逐级请求 `?help=1`，获得该命令的 HTTP 方法与参数 schema；`&detail=1` 展开长描述与示例
+2. 按帮助声明的方法与参数执行；出错时 `error.hint` 会指出下一步该怎么发
+3. 可选 `?fields=id,name` 投影精简返回；`config.json` 设置了 `api_token` 时请求需带 `Authorization: Bearer <token>`
+
+顶层能力一览（以 `?help=1` 返回为准）：`status`、`gestures/list|get|update`、`recognition/start|stop|test`、`events`、`owner/status|enroll|update|delete`、`version/current|releases`。
+设置窗口的「Agent 接口」标签页内含同样的说明。
 
 ### 安全模型（auth duty of care）
 

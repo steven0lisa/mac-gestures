@@ -1,8 +1,15 @@
 {
   "name": "mac-gestures",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.1.2",
+      "date": "2026-10-22",
+      "changes": [
+        "Agent guide page simplified to match the protocol's spirit: a single Base URL entry point; agents discover every command, parameter and example progressively via ?help=1 instead of reading pre-written command listings"
+      ]
+    },
     {
       "version": "0.1.1",
       "date": "2026-10-22",

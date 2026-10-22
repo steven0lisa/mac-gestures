@@ -381,43 +381,27 @@ struct AgentGuideView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text("给 Agent 的接口说明").font(.title2).fontWeight(.semibold)
 
-                Text("本应用在本地启动了一个遵循 **http-cli-for-agent v1.0.0** 协议的自描述命令树。"
-                     + "Agent（如 ZCode / Claude Code）无需读文档，从根帮助开始逐级 `?help=1` 探索即可完成所有配置。"
+                Text("本应用只暴露**一个** HTTP CLI 入口，遵循 **http-cli-for-agent v1.0.0** 协议。"
+                     + "接口是自描述的：把下面的 Base URL 交给 Agent，它从根帮助开始逐级探索，就能发现全部命令、参数和示例，无需任何额外文档。"
                      + "接口只监听 127.0.0.1，仅本机进程可达。")
                     .font(.callout)
 
-                codeBlock(title: "接口地址（Base URL）", code: model.baseURL, copyLabel: "复制 Base URL")
-
-                codeBlock(title: "① 探索：根帮助 → 手势组 → 命令参数（渐进式，省 token）", code: """
-                curl -s "\(model.baseURL)?help=1"                       # 根帮助：全部顶层命令
-                curl -s "\(model.baseURL)/gestures?help=1"              # gestures 组下的子命令
-                curl -s "\(model.baseURL)/gestures/update?help=1"       # update 命令的参数 schema
-                curl -s "\(model.baseURL)/gestures/update?help=1&detail=1"   # 详情级（含示例）
-                """, copyLabel: "复制探索命令")
-
-                codeBlock(title: "② 配置一个手势（OK → 弹通知 + 回车输入「继续」）", code: """
-                curl -s -X POST "\(model.baseURL)/gestures/update" \\
-                  -H 'Content-Type: application/json' \\
-                  -d '{"id":"ok","enabled":true,"script_type":"applescript","script":"tell application \\"System Events\\"\\nkeystroke \\"继续\\"\\nkey code 36\\nend tell","cooldown":3}'
-                """, copyLabel: "复制配置命令")
-
-                codeBlock(title: "③ 状态 / 事件 / 测试运行 / 人脸门控", code: """
-                curl -s "\(model.baseURL)/status?fields=recognition,last_gesture"   # 识别状态
-                curl -s "\(model.baseURL)/events?limit=5"                          # 最近触发记录
-                curl -s -X POST "\(model.baseURL)/recognition/test" \\
-                     -H 'Content-Type: application/json' -d '{"id":"ok"}'          # 手动跑一次脚本
-                curl -s -X POST "\(model.baseURL)/owner/enroll" \\
-                     -H 'Content-Type: application/json' -d '{"gate_enabled":true}' # 录入本人人脸（需面对摄像头）
-                curl -s -X POST "\(model.baseURL)/recognition/stop"                # 暂停识别
-                """, copyLabel: "复制常用命令")
+                codeBlock(title: "接口地址（唯一的入口，把这个交给 Agent 即可）", code: model.baseURL, copyLabel: "复制 Base URL")
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("要点").font(.headline)
-                    bullet("所有响应统一信封：成功 {data, meta}，失败 {error:{code,message,hint}}；hint 会教你下一步怎么发。")
-                    bullet("命令树可用字段投影 ?fields=id,name 精简返回；列表命令有分页与上限。")
-                    bullet("如果 config.json 里设置了 api_token，请给每个请求加 Header：Authorization: Bearer <token>。")
-                    bullet("触发打字类 AppleScript（keystroke）需在 系统设置 → 隐私与安全性 → 辅助功能 中允许 MacGestures。")
+                    Text("Agent 的使用方法（从接口自身逐步获取）").font(.headline)
+                    bullet("第 1 步：GET {base}?help=1 — 根帮助列出全部顶层命令（subcommands）。")
+                    bullet("第 2 步：对感兴趣的命令逐级请求 ?help=1，得到该命令的方法、参数 schema；加 &detail=1 展开长描述与示例。")
+                    bullet("第 3 步：按帮助声明的方法与参数执行；出错时 error.hint 会指出下一步该怎么发。")
+                    bullet("可选：?fields=id,name 只取需要的字段省 token；config.json 设置了 api_token 时，请求需带 Header：Authorization: Bearer <token>。")
                 }
+
+                codeBlock(title: "起点：读取根帮助（之后的一切都从它的返回里发现）", code: """
+                curl -s "\(model.baseURL)?help=1"
+                """, copyLabel: "复制起点命令")
+
+                Text("触发打字类 AppleScript（keystroke）需在 系统设置 → 隐私与安全性 → 辅助功能 中允许 MacGestures。")
+                    .font(.caption).foregroundStyle(.secondary)
 
                 HStack {
                     Button("在浏览器打开接口") {
