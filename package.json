@@ -1,0 +1,18 @@
+{
+  "name": "mac-gestures",
+  "version": "0.1.0",
+  "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
+  "releaseHistory": [
+    {
+      "version": "0.1.0",
+      "date": "2026-10-22",
+      "changes": [
+        "Initial release: menu-bar app recognizing 8 hand gestures via Apple Vision (fully on-device) and running AppleScript/shell scripts per gesture",
+        "Local HTTP CLI (http-cli-for-agent v1.0.0 protocol) at http://127.0.0.1:8741/cli for agents to configure gestures with progressive ?help=1 discovery",
+        "Settings window: gesture list with icons, script editor, test-run button, and a built-in agent integration guide",
+        "Tray shows the currently recognized gesture; menu offers start/pause recognition and settings",
+        "GitHub Release pipeline: tag-triggered ad-hoc signed DMG via GitHub Actions"
+      ]
+    }
+  ]
+}

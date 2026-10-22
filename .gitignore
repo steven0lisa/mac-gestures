@@ -1,0 +1,7 @@
+build/
+dist/
+*.xcodeproj/
+.DS_Store
+.v2c/
+.findings/
+scripts/sensitive-local.txt

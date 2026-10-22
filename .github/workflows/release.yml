@@ -1,0 +1,91 @@
+name: Release
+
+# ===== 复用时改这里：三个标识改成自己的项目 =====
+env:
+  APP_NAME: MacGestures        # 产物 .app 名（也是 DMG 内卷名/Release 标题组成部分）
+  SCHEME: MacGestures          # xcodebuild scheme
+  XCODEPROJ: MacGestures.xcodeproj
+# =============================================
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sensitive data scan
+        run: |
+          chmod +x scripts/check-sensitive.sh
+          ./scripts/check-sensitive.sh
+
+      - name: Read version
+        id: version
+        run: echo "VERSION=$(cat VERSION | tr -d '\n')" >> $GITHUB_OUTPUT
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build
+        run: |
+          xcodebuild -project "${{ env.XCODEPROJ }}" \
+            -scheme "${{ env.SCHEME }}" \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package DMG
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          APP_PATH="build/Build/Products/Release/${{ env.APP_NAME }}.app"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Error: App not found at $APP_PATH"
+            find build/Build/Products -name "*.app" 2>/dev/null || true
+            exit 1
+          fi
+
+          # 双保险：强制 Info.plist 版本与 VERSION 一致（防 project.yml 没同步）
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" "$APP_PATH/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VERSION}" "$APP_PATH/Contents/Info.plist"
+
+          codesign --force --deep --sign - "$APP_PATH"
+
+          chmod +x scripts/create-dmg.sh
+          ./scripts/create-dmg.sh "$APP_PATH" "$VERSION" "dist/${{ env.APP_NAME }}-${VERSION}.dmg"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          python3 -c "
+          import json
+          with open('package.json') as f:
+              data = json.load(f)
+          for release in data.get('releaseHistory', []):
+              if release['version'] == '$VERSION':
+                  print('\n'.join(release.get('changes', [])))
+                  break
+          " > CHANGELOG.txt 2>/dev/null || echo "- Release ${VERSION}" > CHANGELOG.txt
+          cat CHANGELOG.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ env.APP_NAME }} ${{ steps.version.outputs.VERSION }}"
+          body_path: CHANGELOG.txt
+          files: dist/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
