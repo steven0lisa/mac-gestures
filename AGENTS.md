@@ -31,7 +31,7 @@ open build/Build/Products/Debug/MacGestures.app
 
 - **NWListener 的 `requiredLocalEndpoint` 对 listener 不生效**（state ready 但实际不绑定端口）——HTTP 服务必须用 POSIX socket bind 127.0.0.1（现实现）
 - `CLICommand` 的 `method` 是继承自 CLINode 的存储属性（在 super.init 后赋值）；别改成子类重新声明（计算属性不能被存储属性覆盖，会编译错）
-- 老版 VN API：`handler.perform([request])` 返回 Void，结果在 `request.results`；特征距离用 `computeDistance(&out, to:)`（Float）。新版 Swift Vision API（`DetectHumanHandPoseRequest`/`perform`）是 async，只能在 async 上下文用（相机帧处理用新版，同步场景用老版）
+- 老版 VN API：`handler.perform([request])` 返回 Void，结果在 `request.results`；特征距离用 `computeDistance(&out, to:)`（Float）。**全项目统一用 VN-前缀同步 API**——新版 Swift Vision API（`DetectHumanHandPoseRequest` 等）的 `joint(for:)` 在 Xcode 16 的 macOS 15.5 SDK 里不存在，CI（macos-15 runner）会编译失败（本机 Xcode 26 能过，别被本地构建骗了）
 - `[GestureKind: GestureConfig]`（enum key）Codable 会编成数组，持久化结构体里要转 `[String: GestureConfig]`
 - 从终端直接跑 bundle 内二进制，Bash 工具会话结束会连带杀进程；用 `open xxx.app` 交给 launchd 托管
 

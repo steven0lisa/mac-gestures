@@ -105,21 +105,21 @@ final class CameraController: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         busy = true
         let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
 
-        var request = DetectHumanHandPoseRequest()
-        request.maximumHandCount = 1
-        let handler = ImageRequestHandler(pixelBuffer)
-
         Task.detached(priority: .userInitiated) { [weak self] in
             defer { self?.busy = false }
+            // 同步 VN API（macOS 11+ 全 SDK 可用；新版 Swift Vision API 在 Xcode 16 SDK 缺 joint(for:)）
+            let request = VNDetectHumanHandPoseRequest()
+            request.maximumHandCount = 1
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
             do {
-                let observations = try await handler.perform(request)
+                try handler.perform([request])
                 self?.recordProcessing(timestamp: timestamp)
-                guard let observation = observations.first else {
+                guard let observation = (request.results ?? []).first as? VNHumanHandPoseObservation else {
                     self?.onHandPoints?(nil, outcome)
                     return
                 }
                 self?.handsDetected += 1
-                self?.onHandPoints?(HandPoints(observation: observation), outcome)
+                self?.onHandPoints?(HandPoints(vnObservation: observation), outcome)
             } catch {
                 self?.lastError = "\(error)"
             }

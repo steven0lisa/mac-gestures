@@ -122,29 +122,7 @@ enum GestureClassifier {
 // MARK: - Vision 观测结果 → HandPoints
 
 extension HandPoints {
-    /// 从 Vision 手部姿态观测构建（新版 Swift API，async 场景）。关节置信度不足时返回 nil（本帧放弃）。
-    init?(observation: HumanHandPoseObservation, minConfidence: Float = 0.3) {
-        func point(_ name: HumanHandPoseObservation.JointName) -> CGPoint? {
-            guard let joint = observation.joint(for: name), joint.confidence >= minConfidence else { return nil }
-            return joint.location.cgPoint
-        }
-        guard let wrist = point(.wrist),
-              let thumbCMC = point(.thumbCMC), let thumbMP = point(.thumbMP),
-              let thumbIP = point(.thumbIP), let thumbTip = point(.thumbTip),
-              let indexMCP = point(.indexMCP), let indexPIP = point(.indexPIP), let indexTip = point(.indexTip),
-              let middleMCP = point(.middleMCP), let middlePIP = point(.middlePIP), let middleTip = point(.middleTip),
-              let ringMCP = point(.ringMCP), let ringPIP = point(.ringPIP), let ringTip = point(.ringTip),
-              let littleMCP = point(.littleMCP), let littlePIP = point(.littlePIP), let littleTip = point(.littleTip)
-        else { return nil }
-        self.init(wrist: wrist,
-                  thumbCMC: thumbCMC, thumbMP: thumbMP, thumbIP: thumbIP, thumbTip: thumbTip,
-                  indexMCP: indexMCP, indexPIP: indexPIP, indexTip: indexTip,
-                  middleMCP: middleMCP, middlePIP: middlePIP, middleTip: middleTip,
-                  ringMCP: ringMCP, ringPIP: ringPIP, ringTip: ringTip,
-                  littleMCP: littleMCP, littlePIP: littlePIP, littleTip: littleTip)
-    }
-
-    /// 老版 VN API（同步调用场景）
+    /// 从 Vision 手部姿态观测构建（同步 VN API）。关节置信度不足时返回 nil（本帧放弃）。
     init?(vnObservation observation: VNHumanHandPoseObservation, minConfidence: Float = 0.3) {
         func point(_ name: VNHumanHandPoseObservation.JointName) -> CGPoint? {
             guard let joint = try? observation.recognizedPoint(name), joint.confidence >= minConfidence else { return nil }
