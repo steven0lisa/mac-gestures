@@ -20,8 +20,14 @@ final class ConfigStore {
         fileURL = dir.appendingPathComponent("config.json")
         settings = defaults?.settings ?? AppSettings()
         gestures = defaults?.gestures ?? {
+            // 出厂默认：每个手势启用「弹通知报告识别结果」
             var g: [GestureKind: GestureConfig] = [:]
-            for kind in GestureKind.allCases { g[kind] = GestureConfig() }
+            for kind in GestureKind.allCases {
+                var config = GestureConfig()
+                config.enabled = true
+                config.script = kind.defaultScript
+                g[kind] = config
+            }
             return g
         }()
         load()

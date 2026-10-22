@@ -68,6 +68,11 @@ enum GestureKind: String, Codable, CaseIterable, Identifiable {
         case .callMe: return "伸出拇指和小指，其余三指收拢（六 / 打电话）"
         }
     }
+
+    /// 开箱即用的默认脚本：macOS 通知报告识别到的手势
+    var defaultScript: String {
+        "display notification \"\(icon) 识别到 \(name) 手势\" with title \"MacGestures\" sound name \"Glass\""
+    }
 }
 
 // MARK: - 单个手势的配置

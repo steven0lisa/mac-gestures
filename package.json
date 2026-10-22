@@ -1,8 +1,16 @@
 {
   "name": "mac-gestures",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.1.1",
+      "date": "2026-10-22",
+      "changes": [
+        "All 8 gestures now ship with a working default action: a macOS notification (with sound) reporting the recognized gesture, enabled out of the box",
+        "Fresh installs trigger a visible notification for every recognized gesture without any configuration; existing configs are untouched"
+      ]
+    },
     {
       "version": "0.1.0",
       "date": "2026-10-22",
