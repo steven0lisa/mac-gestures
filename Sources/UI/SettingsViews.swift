@@ -325,7 +325,7 @@ struct OwnerGateView: View {
                     let presence = model.ownerInfo["presence_dim"] as? [String: Any] ?? [:]
                     let supported = presence["supported"] as? Bool ?? false
                     let enrolled = model.ownerInfo["enrolled"] as? Bool ?? false
-                    Toggle("持续 \(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒检测不到本人人脸 → 屏幕调到最暗；人脸回来 → 立刻恢复", isOn: Binding(
+                    Toggle("离开时自动调暗屏幕（检测不到本人人脸就调暗，人脸回来立刻恢复）", isOn: Binding(
                         get: { model.context.config.currentSettings.presenceDimEnabled },
                         set: { newValue in
                             model.updateSettings { $0.presenceDimEnabled = newValue }
@@ -334,21 +334,44 @@ struct OwnerGateView: View {
                         .toggleStyle(.switch)
                         .disabled(!enrolled || !supported)
 
-                    HStack(spacing: 8) {
-                        Stepper(value: Binding(
-                            get: { model.context.config.currentSettings.presenceDimSeconds },
+                    Divider()
+
+                    HStack(spacing: 10) {
+                        Text("离开判定时长").font(.callout)
+                        let seconds = model.context.config.currentSettings.presenceDimSeconds
+                        TextField(
+                            "秒",
+                            value: Binding(
+                                get: { seconds },
+                                set: { newValue in
+                                    let clamped = min(max(newValue.rounded(), 3), 60)
+                                    model.updateSettings { $0.presenceDimSeconds = clamped }
+                                    model.refreshOwnerInfo()
+                                }),
+                            format: .number.precision(.fractionLength(0)))
+                            .frame(width: 56)
+                            .multilineTextAlignment(.trailing)
+                            .onSubmit {
+                                model.updateSettings {
+                                    $0.presenceDimSeconds = min(max($0.presenceDimSeconds.rounded(), 3), 60)
+                                }
+                                model.refreshOwnerInfo()
+                            }
+                        Text("秒").font(.callout)
+                        Stepper("", value: Binding(
+                            get: { seconds },
                             set: { newValue in
                                 model.updateSettings { $0.presenceDimSeconds = newValue }
                                 model.refreshOwnerInfo()
-                            }), in: 3...60, step: 1) {
-                            Text("离开判定时长：\(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒")
-                                .font(.callout)
-                        }
+                            }), in: 3...60, step: 1)
+                            .labelsHidden()
                         Spacer()
                         if let dimmed = presence["dimmed"] as? Bool, dimmed {
                             Text("当前已调暗 🌙").font(.caption).foregroundStyle(.orange)
                         }
                     }
+                    Text("持续 \(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒检测不到本人人脸 → 调暗屏幕（可输入 3-60 秒）")
+                        .font(.caption).foregroundStyle(.secondary)
 
                     if !supported {
                         Text("⚠️ 当前系统不支持亮度控制（CoreDisplay 不可用），此功能不可用")

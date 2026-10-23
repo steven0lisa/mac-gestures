@@ -1,8 +1,15 @@
 {
   "name": "mac-gestures",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.2.1",
+      "date": "2026-10-23",
+      "changes": [
+        "Presence-dim timeout is now a first-class setting on the Owner tab: a labeled number field plus stepper (3-60 seconds) instead of being folded into the toggle label"
+      ]
+    },
     {
       "version": "0.2.0",
       "date": "2026-10-23",
