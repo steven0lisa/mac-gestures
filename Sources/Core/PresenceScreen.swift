@@ -118,19 +118,16 @@ final class PresenceScreen {
         process.standardError = FileHandle.nullDevice
         do {
             try process.run()
-            // caffeinate -u -t 1 会等 1 秒，放到后台等，不阻塞状态机
-            if path.hasSuffix("caffeinate") {
-                DispatchQueue.global().async {
-                    process.waitUntilExit()
-                }
-            } else {
-                process.waitUntilExit()
-            }
-            return process.terminationStatus == 0
         } catch {
             NSLog("MacGestures: presence screen 执行 \(path) 失败 \(error)")
             return false
         }
+        // fire-and-forget：后台回收进程资源。绝不在进程运行中读 terminationStatus
+        // （对运行中的 task 读它会抛 NSInvalidArgumentException，直接崩掉 app）
+        DispatchQueue.global().async {
+            process.waitUntilExit()
+        }
+        return true
     }
 
     /// 距上次键鼠输入的秒数（combined session）

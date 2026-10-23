@@ -1,8 +1,15 @@
 {
   "name": "mac-gestures",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.3.1",
+      "date": "2026-10-23",
+      "changes": [
+        "Fix a crash when the screen woke up on your return: reading a still-running caffeinate task's termination status threw an exception that killed the app (menu bar icon disappeared after screen wake). Tool runs are now fire-and-forget and never read the exit status of a running process"
+      ]
+    },
     {
       "version": "0.3.0",
       "date": "2026-10-23",
