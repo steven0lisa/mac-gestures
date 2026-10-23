@@ -59,7 +59,7 @@ final class FaceGate {
         isEnrolled && (gateEnabled || presenceEnabled)
     }
 
-    /// 每帧人脸在/不在回调（PresenceDimmer 消费；视频队列线程调用）
+    /// 每帧人脸在/不在回调（PresenceScreen 消费；视频队列线程调用）
     var onFacePresence: ((Bool) -> Void)?
 
     // MARK: - 录入管理

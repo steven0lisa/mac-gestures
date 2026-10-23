@@ -321,11 +321,11 @@ struct OwnerGateView: View {
 
             GroupBox {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("离开时自动调暗屏幕").font(.headline)
+                    Text("离开时自动熄屏").font(.headline)
                     let presence = model.ownerInfo["presence_dim"] as? [String: Any] ?? [:]
                     let supported = presence["supported"] as? Bool ?? false
                     let enrolled = model.ownerInfo["enrolled"] as? Bool ?? false
-                    Toggle("离开时自动调暗屏幕（检测不到本人人脸就调暗，人脸回来立刻恢复）", isOn: Binding(
+                    Toggle("离开时自动熄屏（检测不到本人人脸就熄灭显示器，人脸回来立刻唤醒；主机不休眠）", isOn: Binding(
                         get: { model.context.config.currentSettings.presenceDimEnabled },
                         set: { newValue in
                             model.updateSettings { $0.presenceDimEnabled = newValue }
@@ -366,20 +366,20 @@ struct OwnerGateView: View {
                             }), in: 3...60, step: 1)
                             .labelsHidden()
                         Spacer()
-                        if let dimmed = presence["dimmed"] as? Bool, dimmed {
-                            Text("当前已调暗 🌙").font(.caption).foregroundStyle(.orange)
+                        if let off = presence["screen_off"] as? Bool, off {
+                            Text("屏幕已熄灭 🌙").font(.caption).foregroundStyle(.orange)
                         }
                     }
-                    Text("持续 \(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒检测不到本人人脸 → 调暗屏幕（可输入 3-60 秒）")
+                    Text("持续 \(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒检测不到本人人脸 → 熄灭显示器（可输入 3-60 秒）")
                         .font(.caption).foregroundStyle(.secondary)
 
                     if !supported {
-                        Text("⚠️ 当前系统不支持亮度控制（CoreDisplay 不可用），此功能不可用")
+                        Text("⚠️ 找不到 pmset/caffeinate 系统工具，此功能不可用")
                             .font(.caption).foregroundStyle(.red)
                     } else if !enrolled {
                         Text("提示：需要先录入人脸才能使用此功能").font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("依赖识别处于开启状态；暂停识别或退出应用时会自动恢复亮度。只开此功能不开属主门控时，其他人的手势仍会正常触发，只是「你不在场」会计入变暗计时。")
+                        Text("依赖识别处于开启状态；暂停识别或退出应用时会自动亮屏。通过 pmset displaysleepnow 熄屏、caffeinate 唤醒，均为系统自带工具，主机不休眠。你正在操作键鼠时（3 秒内有输入）不会熄屏，避免误伤。只开此功能不开属主门控时，其他人的手势仍会正常触发。")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

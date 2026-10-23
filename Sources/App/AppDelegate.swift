@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var engine: GestureEngine!
     private var camera: CameraController!
     private var faceGate: FaceGate!
-    private var presenceDimmer: PresenceDimmer?
+    private var presenceScreen: PresenceScreen?
     private var context: AppContext!
     private var server: HTTPServer!
     private var statusBar: StatusBarController!
@@ -19,10 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         camera = CameraController()
         engine = GestureEngine(config: config, events: events)
         faceGate = FaceGate(config: config)
-        let dimmer = PresenceDimmer(config: config)
-        presenceDimmer = dimmer
+        let dimmer = PresenceScreen(config: config)
+        presenceScreen = dimmer
         context = AppContext(config: config, events: events, engine: engine,
-                             camera: camera, faceGate: faceGate, presenceDimmer: dimmer)
+                             camera: camera, faceGate: faceGate, presenceScreen: dimmer)
         AppContext.shared = context
 
         // 引擎回调 → 托盘
@@ -67,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         // 退出前务必把屏幕亮度恢复回去
-        presenceDimmer?.ensureRestored()
+        presenceScreen?.ensureScreenOn()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

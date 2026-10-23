@@ -11,7 +11,7 @@ final class AppContext {
     let engine: GestureEngine
     let camera: CameraController
     let faceGate: FaceGate
-    let presenceDimmer: PresenceDimmer
+    let presenceScreen: PresenceScreen
     let powerMonitor = PowerMonitor()
     let startedAt = Date()
     var router: CLIRouter!
@@ -27,24 +27,24 @@ final class AppContext {
     private var changingPowerState = false
 
     init(config: ConfigStore, events: EventLog, engine: GestureEngine,
-         camera: CameraController, faceGate: FaceGate, presenceDimmer: PresenceDimmer) {
+         camera: CameraController, faceGate: FaceGate, presenceScreen: PresenceScreen) {
         self.config = config
         self.events = events
         self.engine = engine
         self.camera = camera
         self.faceGate = faceGate
-        self.presenceDimmer = presenceDimmer
+        self.presenceScreen = presenceScreen
         // 相机帧 → 引擎（门控不通过时 points 为 nil，引擎自动复位稳定计数）
         camera.faceGate = faceGate
         camera.onHandPoints = { [weak engine] points, _ in
             engine?.processHandPoints(points)
         }
         // 人脸在场 → 变暗状态机
-        faceGate.onFacePresence = { [weak presenceDimmer] accepted in
-            presenceDimmer?.feed(faceAccepted: accepted)
+        faceGate.onFacePresence = { [weak presenceScreen] accepted in
+            presenceScreen?.feed(faceAccepted: accepted)
         }
-        presenceDimmer.recognitionStillRunning = { [weak camera] in camera?.isRunning ?? false }
-        presenceDimmer.setEnrolled(faceGate.isEnrolled)
+        presenceScreen.recognitionStillRunning = { [weak camera] in camera?.isRunning ?? false }
+        presenceScreen.setEnrolled(faceGate.isEnrolled)
         // 电源变化 → 电池自动暂停 / 插电恢复
         powerMonitor.onPowerChange = { [weak self] source in
             self?.handlePowerChange(source)
@@ -127,7 +127,7 @@ final class AppContext {
     }
 
     func stopRecognition() {
-        presenceDimmer.ensureRestored()
+        presenceScreen.ensureScreenOn()
         camera.stop()
     }
 }

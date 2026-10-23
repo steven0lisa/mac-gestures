@@ -325,7 +325,7 @@ enum MacGesturesAPI {
                 }
                 do {
                     _ = try context.faceGate.enroll(pixelBuffer: buffer)
-                    context.presenceDimmer.setEnrolled(true)
+                    context.presenceScreen.setEnrolled(true)
                 } catch {
                     throw CLIError(status: 409, code: "conflict",
                                    message: error.localizedDescription,
@@ -344,10 +344,10 @@ enum MacGesturesAPI {
                                  CLIParam("threshold", "number", description: "Face match threshold (2-40); "
                                              + "compare with last_distance in owner/status"),
                                  CLIParam("presence_dim_enabled", "boolean",
-                                          description: "Dim the built-in display to minimum after no owner face for a while; "
-                                              + "restore instantly when the owner returns. Requires an enrolled face"),
+                                          description: "Turn the display off (screen sleep, not system sleep) after no owner "
+                                              + "face for a while; wake instantly when the owner returns. Requires an enrolled face"),
                                  CLIParam("presence_dim_seconds", "number",
-                                          description: "Seconds without the owner's face before dimming (3-60)"),
+                                          description: "Seconds without the owner's face before the screen turns off (3-60)"),
                              ],
                              examples: ["POST {base}/owner/update {\"gate_enabled\":false}",
                                         "POST {base}/owner/update {\"presence_dim_enabled\":true,\"presence_dim_seconds\":5}"]) { ctx in
@@ -380,7 +380,7 @@ enum MacGesturesAPI {
                                    hint: "POST {base}/owner/enroll while facing the camera")
                 }
                 context.faceGate.deleteEnrollment()
-                context.presenceDimmer.setEnrolled(false)
+                context.presenceScreen.setEnrolled(false)
                 context.config.updateSettings {
                     $0.ownerGateEnabled = false
                     $0.presenceDimEnabled = false
@@ -406,15 +406,15 @@ enum MacGesturesAPI {
         if let verifiedAt = gate.lastVerifyAt {
             dict["last_verify_at"] = GestureEngine.rfc3339(verifiedAt)
         }
-        let dimmer = context.presenceDimmer
+        let screen = context.presenceScreen
         var presence: [String: Any] = [
-            "supported": dimmer.supported,
+            "supported": screen.supported,
             "enabled": gate.presenceEnabled,
-            "seconds": dimmer.thresholdSeconds,
-            "dimmed": dimmer.isDimmed,
+            "seconds": screen.thresholdSeconds,
+            "screen_off": screen.isScreenOff,
         ]
-        if let dimmedAt = dimmer.dimmedAt {
-            presence["dimmed_at"] = GestureEngine.rfc3339(dimmedAt)
+        if let offAt = screen.screenOffAt {
+            presence["screen_off_at"] = GestureEngine.rfc3339(offAt)
         }
         dict["presence_dim"] = presence
         return dict

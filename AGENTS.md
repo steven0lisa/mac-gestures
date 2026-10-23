@@ -33,7 +33,7 @@ open build/Build/Products/Debug/MacGestures.app
 - **NWListener 的 `requiredLocalEndpoint` 对 listener 不生效**（state ready 但实际不绑定端口）——HTTP 服务必须用 POSIX socket bind 127.0.0.1（现实现）
 - `CLICommand` 的 `method` 是继承自 CLINode 的存储属性（在 super.init 后赋值）；别改成子类重新声明（计算属性不能被存储属性覆盖，会编译错）
 - 老版 VN API：`handler.perform([request])` 返回 Void，结果在 `request.results`；特征距离用 `computeDistance(&out, to:)`（Float）。**全项目统一用 VN-前缀同步 API**——新版 Swift Vision API（`DetectHumanHandPoseRequest` 等）的 `joint(for:)` 在 Xcode 16 的 macOS 15.5 SDK 里不存在，CI（macos-15 runner）会编译失败（本机 Xcode 26 能过，别被本地构建骗了）
-- **macOS 26 (Tahoe) 移除了 CoreDisplay 私有框架**（文件系统与 dyld cache 都没有），`CoreDisplay_Display_SetUserBrightness` 亮度控制不可用、合成 NX 亮度键也失效（BetterDisplay 同样受影响）——PresenceDimmer 在 Tahoe 上 supported=false 如实上报；屏幕调暗功能只在 macOS 15 及以下可用
+- **macOS 26 (Tahoe) 移除了 CoreDisplay 私有框架**，程序化调亮度（`CoreDisplay_Display_SetUserBrightness`）与合成亮度键全部失效（BetterDisplay 同样受影响）——离开熄屏因此改用公开工具：`pmset displaysleepnow` 熄屏 + `caffeinate -u` 唤醒（`CGDisplayIsAsleep` 可作权威判定），全版本可用，已实测闭环
 - IOKit IOPS（`IOKit.ps`）读电源状态正常可用（PowerMonitor 用它做电池暂停）
 - `[GestureKind: GestureConfig]`（enum key）Codable 会编成数组，持久化结构体里要转 `[String: GestureConfig]`
 - 从终端直接跑 bundle 内二进制，Bash 工具会话结束会连带杀进程；用 `open xxx.app` 交给 launchd 托管

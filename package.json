@@ -1,8 +1,17 @@
 {
   "name": "mac-gestures",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.3.0",
+      "date": "2026-10-23",
+      "changes": [
+        "Presence feature now turns the display OFF instead of dimming: after N seconds without the owner's face the screen sleeps (system stays awake), and it wakes instantly when your face returns - implemented with the public system tools (pmset displaysleepnow + caffeinate -u), so it works on every macOS version including Tahoe 26, where the old brightness private API had been removed",
+        "Anti-false-positive guard: the screen will not turn off while you are actively using the keyboard/mouse (3s input window), so operating the Mac with your face out of frame never triggers it",
+        "Owner tab renamed accordingly (dim -> screen off) with live screen-off indicator; owner/status now reports screen_off / screen_off_at"
+      ]
+    },
     {
       "version": "0.2.1",
       "date": "2026-10-23",
