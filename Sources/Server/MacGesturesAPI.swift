@@ -33,6 +33,7 @@ enum MacGesturesAPI {
         root.add(recognitionGroup(context))
         root.add(eventsCommand(context))
         root.add(ownerGroup(context))
+        root.add(settingsGroup(context))
         root.add(versionGroup())
         return router
     }
@@ -58,6 +59,8 @@ enum MacGesturesAPI {
             "hands_detected_frames": context.camera.handsDetected,
             "approx_fps": (context.camera.approxFPS * 10).rounded() / 10,
             "trigger_count_today": context.engine.triggerCount,
+            "power_source": context.powerSource,
+            "auto_paused_by_battery": context.autoPausedByBattery,
             "owner_gate": ownerDict(context),
             "port": context.config.currentSettings.port,
             "base_url": "http://127.0.0.1:\(context.config.currentSettings.port)/cli",
@@ -322,6 +325,7 @@ enum MacGesturesAPI {
                 }
                 do {
                     _ = try context.faceGate.enroll(pixelBuffer: buffer)
+                    context.presenceDimmer.setEnrolled(true)
                 } catch {
                     throw CLIError(status: 409, code: "conflict",
                                    message: error.localizedDescription,
@@ -334,24 +338,36 @@ enum MacGesturesAPI {
                 return ownerDict(context)
             })
         group.add(CLICommand(name: "update", method: "POST",
-                             summary: "Enable/disable the gate or adjust the match threshold",
+                             summary: "Enable/disable the gate, presence dimming, or adjust matching",
                              params: [
                                  CLIParam("gate_enabled", "boolean", description: "Enable/disable owner gating"),
                                  CLIParam("threshold", "number", description: "Face match threshold (2-40); "
                                              + "compare with last_distance in owner/status"),
+                                 CLIParam("presence_dim_enabled", "boolean",
+                                          description: "Dim the built-in display to minimum after no owner face for a while; "
+                                              + "restore instantly when the owner returns. Requires an enrolled face"),
+                                 CLIParam("presence_dim_seconds", "number",
+                                          description: "Seconds without the owner's face before dimming (3-60)"),
                              ],
-                             examples: ["POST {base}/owner/update {\"gate_enabled\":false}"]) { ctx in
-                guard ctx.bool("gate_enabled") != nil || ctx.double("threshold") != nil else {
+                             examples: ["POST {base}/owner/update {\"gate_enabled\":false}",
+                                        "POST {base}/owner/update {\"presence_dim_enabled\":true,\"presence_dim_seconds\":5}"]) { ctx in
+                guard ctx.bool("gate_enabled") != nil || ctx.double("threshold") != nil
+                        || ctx.bool("presence_dim_enabled") != nil || ctx.double("presence_dim_seconds") != nil else {
                     throw CLIError(status: 400, code: "missing_param",
-                                   message: "nothing to update: send gate_enabled and/or threshold",
+                                   message: "nothing to update: send gate_enabled, threshold, presence_dim_enabled and/or presence_dim_seconds",
                                    hint: "POST {base}/owner/update {\"gate_enabled\":true}")
                 }
                 if let threshold = ctx.double("threshold"), threshold < 2 || threshold > 40 {
                     throw CLIError.invalidParam("threshold", "\(threshold)", hint: "allowed range: 2 - 40")
                 }
+                if let seconds = ctx.double("presence_dim_seconds"), seconds < 3 || seconds > 60 {
+                    throw CLIError.invalidParam("presence_dim_seconds", "\(seconds)", hint: "allowed range: 3 - 60 seconds")
+                }
                 context.config.updateSettings { settings in
                     if let gate = ctx.bool("gate_enabled") { settings.ownerGateEnabled = gate }
                     if let threshold = ctx.double("threshold") { settings.faceMatchMaxDistance = threshold }
+                    if let presence = ctx.bool("presence_dim_enabled") { settings.presenceDimEnabled = presence }
+                    if let seconds = ctx.double("presence_dim_seconds") { settings.presenceDimSeconds = seconds }
                 }
                 return ownerDict(context)
             })
@@ -364,7 +380,11 @@ enum MacGesturesAPI {
                                    hint: "POST {base}/owner/enroll while facing the camera")
                 }
                 context.faceGate.deleteEnrollment()
-                context.config.updateSettings { $0.ownerGateEnabled = false }
+                context.presenceDimmer.setEnrolled(false)
+                context.config.updateSettings {
+                    $0.ownerGateEnabled = false
+                    $0.presenceDimEnabled = false
+                }
                 return ownerDict(context)
             })
         return group
@@ -386,7 +406,83 @@ enum MacGesturesAPI {
         if let verifiedAt = gate.lastVerifyAt {
             dict["last_verify_at"] = GestureEngine.rfc3339(verifiedAt)
         }
+        let dimmer = context.presenceDimmer
+        var presence: [String: Any] = [
+            "supported": dimmer.supported,
+            "enabled": gate.presenceEnabled,
+            "seconds": dimmer.thresholdSeconds,
+            "dimmed": dimmer.isDimmed,
+        ]
+        if let dimmedAt = dimmer.dimmedAt {
+            presence["dimmed_at"] = GestureEngine.rfc3339(dimmedAt)
+        }
+        dict["presence_dim"] = presence
         return dict
+    }
+
+    // MARK: - settings（全局设置）
+
+    private static func settingsGroup(_ context: AppContext) -> CLIGroup {
+        let group = CLIGroup(name: "settings", summary: "App-wide settings: port, stability, battery pause, autostart",
+                             description: "Changes take effect immediately. Changing the port restarts the HTTP "
+                                 + "listener, so the response comes from the NEW port.")
+        group.add(CLICommand(name: "get", method: "GET",
+                             summary: "Read app-wide settings",
+                             examples: ["GET {base}/settings/get"]) { _ in
+                settingsDict(context)
+            })
+        group.add(CLICommand(name: "update", method: "POST",
+                             summary: "Update app-wide settings (partial)",
+                             description: "Only the parameters you send are changed and persisted to config.json. "
+                                 + "pause_on_battery pauses recognition while on battery power and resumes on AC. "
+                                 + "Changing the port restarts the HTTP listener immediately.",
+                             params: [
+                                 CLIParam("port", "integer", description: "HTTP CLI port (1024-65535); restarts the listener"),
+                                 CLIParam("stability_frames", "integer",
+                                          description: "Consecutive frames of the same gesture required before triggering (1-10)"),
+                                 CLIParam("launch_recognition_on_start", "boolean",
+                                          description: "Resume recognition automatically on app launch (camera already authorized)"),
+                                 CLIParam("pause_on_battery", "boolean",
+                                          description: "Pause all recognition when on battery power, resume on AC (default true)"),
+                             ],
+                             examples: ["POST {base}/settings/update {\"pause_on_battery\":false}",
+                                        "POST {base}/settings/update {\"stability_frames\":4}"]) { ctx in
+                if let port = ctx.int("port") {
+                    guard (1024...65535).contains(port) else {
+                        throw CLIError.invalidParam("port", "\(port)", hint: "allowed range: 1024 - 65535")
+                    }
+                }
+                if let frames = ctx.int("stability_frames"), frames < 1 || frames > 10 {
+                    throw CLIError.invalidParam("stability_frames", "\(frames)", hint: "allowed range: 1 - 10")
+                }
+                context.config.updateSettings { settings in
+                    if let port = ctx.int("port") { settings.port = port }
+                    if let frames = ctx.int("stability_frames") { settings.stabilityFrames = frames }
+                    if let launch = ctx.bool("launch_recognition_on_start") { settings.launchRecognitionOnStart = launch }
+                    if let battery = ctx.bool("pause_on_battery") { settings.pauseOnBattery = battery }
+                }
+                if ctx.bool("pause_on_battery") != nil {
+                    context.applyPauseOnBatterySetting()
+                }
+                if let port = ctx.int("port") {
+                    context.onServerRestart?(UInt16(port))
+                }
+                return settingsDict(context)
+            })
+        return group
+    }
+
+    static func settingsDict(_ context: AppContext) -> [String: Any] {
+        let settings = context.config.currentSettings
+        return [
+            "port": context.effectivePort,
+            "configured_port": settings.port,
+            "stability_frames": settings.stabilityFrames,
+            "launch_recognition_on_start": settings.launchRecognitionOnStart,
+            "pause_on_battery": settings.pauseOnBattery,
+            "power_source": context.powerSource,
+            "auto_paused_by_battery": context.autoPausedByBattery,
+        ]
     }
 
     // MARK: - version surface

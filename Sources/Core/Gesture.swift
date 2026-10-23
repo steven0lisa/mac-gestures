@@ -111,6 +111,9 @@ struct AppSettings: Codable, Equatable {
     var apiToken: String = ""
     var ownerGateEnabled: Bool = false
     var faceMatchMaxDistance: Double = 12.0
+    var presenceDimEnabled: Bool = false
+    var presenceDimSeconds: Double = 5.0
+    var pauseOnBattery: Bool = true
 
     private enum CodingKeys: String, CodingKey {
         case port
@@ -120,6 +123,9 @@ struct AppSettings: Codable, Equatable {
         case apiToken = "api_token"
         case ownerGateEnabled = "owner_gate_enabled"
         case faceMatchMaxDistance = "face_match_max_distance"
+        case presenceDimEnabled = "presence_dim_enabled"
+        case presenceDimSeconds = "presence_dim_seconds"
+        case pauseOnBattery = "pause_on_battery"
     }
 
     init() {}
@@ -133,5 +139,8 @@ struct AppSettings: Codable, Equatable {
         apiToken = try c.decodeIfPresent(String.self, forKey: .apiToken) ?? ""
         ownerGateEnabled = try c.decodeIfPresent(Bool.self, forKey: .ownerGateEnabled) ?? false
         faceMatchMaxDistance = try c.decodeIfPresent(Double.self, forKey: .faceMatchMaxDistance) ?? 12.0
+        presenceDimEnabled = try c.decodeIfPresent(Bool.self, forKey: .presenceDimEnabled) ?? false
+        presenceDimSeconds = try c.decodeIfPresent(Double.self, forKey: .presenceDimSeconds) ?? 5.0
+        pauseOnBattery = try c.decodeIfPresent(Bool.self, forKey: .pauseOnBattery) ?? true
     }
 }

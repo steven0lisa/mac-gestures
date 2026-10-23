@@ -11,6 +11,8 @@ macOS 菜单栏应用：**摄像头识别手部手势 → 运行对应的 AppleS
 - **菜单栏常驻**：托盘实时闪现当前识别到的手势；菜单提供 开启/暂停识别、设置、退出
 - **本地 HTTP 接口**（[http-cli-for-agent](https://github.com/steven0lisa/http-cli-for-agent) v1.0.0 协议）：`?help=1` 渐进式自描述命令树，AI Agent 无需文档即可探索并完成全部配置
 - **属主人脸门控**（可选）：录入本人人脸后，只有「你」的手势才触发，其他人的手势被忽略
+- **离开黑屏**（可选）：持续 N 秒检测不到本人人脸自动调暗屏幕，回来立即恢复（⚠️ 需要 CoreDisplay 私有 API，macOS 26 Tahoe 已移除该 API，Tahoe 上此功能不可用、状态如实上报；macOS 15 及以下可用）
+- **电池省电**：使用电池供电时自动暂停全部识别，接通电源自动恢复（默认开启，可关）
 - 设置窗口：手势列表（带示意图标）+ 脚本编辑器 + 测试运行 + Agent 接口说明页 + 通用设置
 
 | 图标 | 手势 id | 动作要领 |
@@ -52,7 +54,7 @@ curl -s "$BASE?help=1"     # 起点：根帮助列出全部顶层命令
 2. 按帮助声明的方法与参数执行；出错时 `error.hint` 会指出下一步该怎么发
 3. 可选 `?fields=id,name` 投影精简返回；`config.json` 设置了 `api_token` 时请求需带 `Authorization: Bearer <token>`
 
-顶层能力一览（以 `?help=1` 返回为准）：`status`、`gestures/list|get|update`、`recognition/start|stop|test`、`events`、`owner/status|enroll|update|delete`、`version/current|releases`。
+顶层能力一览（以 `?help=1` 返回为准）：`status`、`gestures/list|get|update`、`recognition/start|stop|test`、`events`、`owner/status|enroll|update|delete`、`settings/get|update`、`version/current|releases`。
 设置窗口的「Agent 接口」标签页内含同样的说明。
 
 ### 安全模型（auth duty of care）

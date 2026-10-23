@@ -51,6 +51,17 @@ final class FaceGate {
     var gateEnabled: Bool { config.currentSettings.ownerGateEnabled }
     var threshold: Double { config.currentSettings.faceMatchMaxDistance }
 
+    /// 离开变暗（presence）功能是否开启
+    var presenceEnabled: Bool { config.currentSettings.presenceDimEnabled }
+
+    /// 本帧是否需要跑人脸检测：录入了人脸，且属主门控或离开变暗任一开启
+    var checkActive: Bool {
+        isEnrolled && (gateEnabled || presenceEnabled)
+    }
+
+    /// 每帧人脸在/不在回调（PresenceDimmer 消费；视频队列线程调用）
+    var onFacePresence: ((Bool) -> Void)?
+
     // MARK: - 录入管理
 
     private func loadEnrollment() {
@@ -118,8 +129,10 @@ final class FaceGate {
 
     // MARK: - 逐帧验证
 
+    /// 对一帧做脸检：属主门控开启时结果用于放行手势；离开变暗开启时结果喂给 presence 回调。
+    /// 两者独立——只开变暗不开门控时，别人的脸不会拦手势，但会计入「我不在」。
     func verify(pixelBuffer: CVPixelBuffer) -> FaceVerifyOutcome {
-        guard isEnrolled, gateEnabled, let base = baseFeature else {
+        guard isEnrolled, checkActive, let base = baseFeature else {
             lastOutcome = .disabled
             return .disabled
         }
@@ -127,6 +140,7 @@ final class FaceGate {
               let feature = Self.featurePrint(of: nil, pixelBuffer: pixelBuffer, region: faceRect)
         else {
             lastOutcome = .noFace
+            onFacePresence?(false)
             return .noFace
         }
         var distance = Float(0)
@@ -134,6 +148,7 @@ final class FaceGate {
             try feature.computeDistance(&distance, to: base)
         } catch {
             lastOutcome = .noFace
+            onFacePresence?(false)
             return .noFace
         }
         let distanceValue = Double(distance)
@@ -141,6 +156,11 @@ final class FaceGate {
         lastVerifyAt = Date()
         let outcome: FaceVerifyOutcome = distanceValue <= threshold ? .accepted(distance: distanceValue) : .rejected(distance: distanceValue)
         lastOutcome = outcome
+        if case .accepted = outcome {
+            onFacePresence?(true)
+        } else {
+            onFacePresence?(false)
+        }
         return outcome
     }
 

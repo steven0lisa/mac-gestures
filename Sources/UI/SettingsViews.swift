@@ -319,6 +319,50 @@ struct OwnerGateView: View {
                 .padding(6)
             }
 
+            GroupBox {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("离开时自动调暗屏幕").font(.headline)
+                    let presence = model.ownerInfo["presence_dim"] as? [String: Any] ?? [:]
+                    let supported = presence["supported"] as? Bool ?? false
+                    let enrolled = model.ownerInfo["enrolled"] as? Bool ?? false
+                    Toggle("持续 \(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒检测不到本人人脸 → 屏幕调到最暗；人脸回来 → 立刻恢复", isOn: Binding(
+                        get: { model.context.config.currentSettings.presenceDimEnabled },
+                        set: { newValue in
+                            model.updateSettings { $0.presenceDimEnabled = newValue }
+                            model.refreshOwnerInfo()
+                        }))
+                        .toggleStyle(.switch)
+                        .disabled(!enrolled || !supported)
+
+                    HStack(spacing: 8) {
+                        Stepper(value: Binding(
+                            get: { model.context.config.currentSettings.presenceDimSeconds },
+                            set: { newValue in
+                                model.updateSettings { $0.presenceDimSeconds = newValue }
+                                model.refreshOwnerInfo()
+                            }), in: 3...60, step: 1) {
+                            Text("离开判定时长：\(Int(model.context.config.currentSettings.presenceDimSeconds)) 秒")
+                                .font(.callout)
+                        }
+                        Spacer()
+                        if let dimmed = presence["dimmed"] as? Bool, dimmed {
+                            Text("当前已调暗 🌙").font(.caption).foregroundStyle(.orange)
+                        }
+                    }
+
+                    if !supported {
+                        Text("⚠️ 当前系统不支持亮度控制（CoreDisplay 不可用），此功能不可用")
+                            .font(.caption).foregroundStyle(.red)
+                    } else if !enrolled {
+                        Text("提示：需要先录入人脸才能使用此功能").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("依赖识别处于开启状态；暂停识别或退出应用时会自动恢复亮度。只开此功能不开属主门控时，其他人的手势仍会正常触发，只是「你不在场」会计入变暗计时。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(6)
+            }
+
             if let message = message {
                 Text(message).font(.callout).foregroundStyle(.orange)
             }
@@ -499,6 +543,14 @@ struct GeneralSettingsView: View {
                         Text("手势确认帧数：\(model.context.config.currentSettings.stabilityFrames)（连续 N 帧同一手势才触发，越大越稳）")
                             .font(.callout)
                     }
+
+                    Toggle("使用电池时自动暂停识别，接通电源自动恢复（省电）", isOn: Binding(
+                        get: { model.context.config.currentSettings.pauseOnBattery },
+                        set: { newValue in
+                            model.updateSettings { $0.pauseOnBattery = newValue }
+                            model.context.applyPauseOnBatterySetting()
+                        }))
+                        .toggleStyle(.switch)
                 }
                 .padding(6)
             }

@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var engine: GestureEngine!
     private var camera: CameraController!
     private var faceGate: FaceGate!
+    private var presenceDimmer: PresenceDimmer?
     private var context: AppContext!
     private var server: HTTPServer!
     private var statusBar: StatusBarController!
@@ -18,8 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         camera = CameraController()
         engine = GestureEngine(config: config, events: events)
         faceGate = FaceGate(config: config)
+        let dimmer = PresenceDimmer(config: config)
+        presenceDimmer = dimmer
         context = AppContext(config: config, events: events, engine: engine,
-                             camera: camera, faceGate: faceGate)
+                             camera: camera, faceGate: faceGate, presenceDimmer: dimmer)
         AppContext.shared = context
 
         // 引擎回调 → 托盘
@@ -33,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let router = MacGesturesAPI.buildRouter(context: context)
         context.router = router
         startServer(preferredPort: UInt16(config.currentSettings.port))
+        context.onServerRestart = { [weak self] port in
+            self?.restartServer(port: port)
+        }
 
         // 托盘
         statusBar = StatusBarController()
@@ -42,14 +48,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar.onOpenWebDocs = { [weak self] in self?.openWebDocs() }
         statusBar.setRecognitionRunning(false)
         refreshCameraWarning()
+        context.onAutoPauseChange = { [weak self] message in
+            self?.statusBar.setCameraWarning(message)
+        }
 
-        // 启动即恢复识别（仅在摄像头已授权时；首次授权交给用户主动开启）
+        // 电源监控（电池自动暂停 / 插电恢复）
+        context.startPowerMonitor()
+
+        // 启动即恢复识别（仅在摄像头已授权、且没有因电池保持暂停时；首次授权交给用户主动开启）
         if config.currentSettings.launchRecognitionOnStart,
-           CameraController.authorizationStatus == .authorized {
+           CameraController.authorizationStatus == .authorized,
+           !(context.powerSource == "battery" && config.currentSettings.pauseOnBattery) {
             startRecognition()
         }
 
         NSLog("MacGestures 启动完成：HTTP CLI http://127.0.0.1:\(context.effectivePort)/cli")
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // 退出前务必把屏幕亮度恢复回去
+        presenceDimmer?.ensureRestored()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -131,12 +149,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func restartServer(port: UInt16) {
+        server.stop()
+        startServer(preferredPort: port)
+    }
+
     private func openSettings(tab: SettingsTab?) {
         if settingsController == nil {
             let model = AppModel(context: context)
             model.onServerRestart = { [weak self] port in
-                self?.server.stop()
-                self?.startServer(preferredPort: port)
+                self?.restartServer(port: port)
             }
             self.model = model
             settingsController = SettingsWindowController(model: model)

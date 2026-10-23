@@ -1,8 +1,18 @@
 {
   "name": "mac-gestures",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "MacGestures — macOS menu-bar app: camera hand gestures trigger AppleScript/shell scripts, with a self-describing HTTP CLI for agents",
   "releaseHistory": [
+    {
+      "version": "0.2.0",
+      "date": "2026-10-23",
+      "changes": [
+        "Power saving: recognition now pauses automatically when running on battery and resumes when plugged back in (on by default, configurable in Settings > General or via POST /cli/settings/update)",
+        "Presence dimming framework: after enrolling your face, the display can dim to minimum when no owner face is detected for N seconds and restore instantly on your return (via POST /cli/owner/update {\"presence_dim_enabled\":true}); available on macOS 15 and below - macOS 26 removed the brightness API it relies on, where the feature reports as unavailable",
+        "New /cli/settings group (get/update): port, stability frames, launch recognition, battery pause - agents can now change app-wide settings",
+        "Agent guide page simplified to a single Base URL entry point per the self-describing protocol spirit"
+      ]
+    },
     {
       "version": "0.1.2",
       "date": "2026-10-22",

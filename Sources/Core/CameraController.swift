@@ -92,11 +92,11 @@ final class CameraController: NSObject, AVCaptureVideoDataOutputSampleBufferDele
 
         latestPixelBuffer = pixelBuffer
 
-        // 人脸校验优先：门控开启时非本人/无人脸直接跳过手势识别（省电且防误触发）
+        // 人脸检查：门控开启时非本人/无人脸拦下手势；仅开"离开变暗"时只采集在场信息不拦手势
         var outcome = FaceVerifyOutcome.disabled
-        if let faceGate = faceGate {
+        if let faceGate = faceGate, faceGate.checkActive {
             outcome = faceGate.verify(pixelBuffer: pixelBuffer)
-            guard outcome.allowsGesture else {
+            if faceGate.gateEnabled && !outcome.allowsGesture {
                 onHandPoints?(nil, outcome)
                 return
             }
